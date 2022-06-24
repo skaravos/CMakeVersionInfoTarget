@@ -1,5 +1,6 @@
-cmake_minimum_required(VERSION 3.17) # uses CMAKE_CURRENT_FUNCTION_LIST_DIR
+cmake_minimum_required(VERSION 3.10)
 
+set(_current_function_list_dir ${CMAKE_CURRENT_LIST_DIR})
 
 function(__create_vinfo_query_cmake target_file_path)
   file(WRITE ${target_file_path} [==========[
@@ -280,7 +281,7 @@ function(version_info_target)
 
   # --- set internal variables
 
-  set(_vinfo_templates_dir "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/templates")
+  set(_vinfo_templates_dir "${_current_function_list_dir}/templates")
   set(_vinfo_src_in    "${_vinfo_templates_dir}/VersionInfo.${_src_ext}.in")
   set(_vinfo_hdr_in    "${_vinfo_templates_dir}/VersionInfo.${_hdr_ext}.in")
 
