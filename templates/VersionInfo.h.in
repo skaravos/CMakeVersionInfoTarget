@@ -18,8 +18,5 @@ struct @_TARGET_NAME@VersionInfo {
   const char* Configuration;
 };
 
-//! fills a struct with the project version information
-void @_TARGET_NAME@_init(struct @_TARGET_NAME@VersionInfo* vinfo);
-
-//! returns a string containing all the version info (designed for printing)
-const char* @_TARGET_NAME@_summary_string();
+extern struct @_TARGET_NAME@VersionInfo @_TARGET_NAME@VersionInfo;
+extern char const *@_TARGET_NAME@SummaryString;

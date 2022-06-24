@@ -73,11 +73,11 @@ const char *const VersionInfo::GitUserName     = \"${_GIT_USER_NAME}\";
 const char *const VersionInfo::GitUserEmail    = \"${_GIT_USER_EMAIL}\";
 ")
   set(_GIT_VARIABLE_DEFINITIONS_C "
-  vinfo->IsDirty         = ${_GIT_REPO_IS_DIRTY};
-  vinfo->GitCommitHash   = \"${_GIT_COMMIT_HASH}\";
-  vinfo->GitCommitDate   = \"${_GIT_COMMIT_DATE}\";
-  vinfo->GitUserName     = \"${_GIT_USER_NAME}\";
-  vinfo->GitUserEmail    = \"${_GIT_USER_EMAIL}\";
+  .IsDirty         = ${_GIT_REPO_IS_DIRTY},
+  .GitCommitHash   = \"${_GIT_COMMIT_HASH}\",
+  .GitCommitDate   = \"${_GIT_COMMIT_DATE}\",
+  .GitUserName     = \"${_GIT_USER_NAME}\",
+  .GitUserEmail    = \"${_GIT_USER_EMAIL}\"
 ")
   if (_GIT_REPO_IS_DIRTY)
     set(_GIT_IS_DIRTY_STRING " (uncommitted changes)")
