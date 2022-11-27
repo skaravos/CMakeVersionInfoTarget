@@ -3,24 +3,17 @@
 
 @_NAMESPACE_SCOPE_OPENING@
 
-struct VersionInfo {
-  static const char* const ProjectName;
-  static const char* const ProjectVersion;
-  static const char* const Major;
-  static const char* const Minor;
-  static const char* const Patch;
-  static const bool IsDirty;
-  static const char* const GitCommitHash;
-  static const char* const GitUserName;
-  static const char* const GitUserEmail;
-  static const char* const GitCommitDate;
-  static const char* const Compiler;
-  static const char* const CompilerVersion;
-  static const char* const Processor;
-  static const char* const Configuration;
-  static const char* summaryString();
-};
+extern const char* const ProjectName;
+extern const char* const ProjectVersion;
+extern const char* const ProjectVersionMajor;
+extern const char* const ProjectVersionMinor;
+extern const char* const ProjectVersionPatch;
+extern const char* const ProjectVersionTweak;
+extern const char* const CompilerId;
+extern const char* const CompilerVersion;
+extern const char* const Architecture; // x86  x64
+extern const char* const BuildType;    // debug  release
+@_GIT_VARIABLE_DECLARATIONS_CXX@
+extern const char* const VersionSummary;
 
 @_NAMESPACE_SCOPE_CLOSING@
-
-@_OSTREAM_OPERATOR_DECLARATION@

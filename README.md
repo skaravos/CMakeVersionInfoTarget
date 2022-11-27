@@ -75,14 +75,13 @@ Then you just need to include it from your `CMakeLists.txt` file like so:
 include(3rd/CMakeVersionInfoTarget/VersionInfoTarget.cmake)
 ```
 
-This will import a function `version_info_target` with the following call spec:
+This will import a function `add_version_info_target` with the following call spec:
 
 ```cmake
-version_info_target(NAME <unique_target_name>
+add_version_info_target(NAME <unique_target_name>
     [LINK_TO targets...]
     [NAMESPACE namespaces...]
     [LANGUAGE language]
-    [OSTREAM_OPERATOR]
     [GIT_WORK_TREE <git_work_tree>]
     [PROJECT_NAME <name>]
     [PROJECT_VERSION <version>]
@@ -94,19 +93,18 @@ up-to-date version information.
 
 ## Usage - Parameters
 
-*see comment above the function in the module file for details.*
+*see comment in the VersionInfoTarget.cmake file for parameter details.*
 
 ## Usage - Minimum Reproducible Example (C++)
 
 ```cmake
 # CMakeLists.txt
-cmake_minimum_required(VERSION 3.17)
+cmake_minimum_required(VERSION 3.10)
 project(HelloVersion VERSION 1.2.3 LANGUAGES CXX)
-include("3rd/CMakeVersionInfoTarget/VersionInfoTarget.cmake")
-version_info_target(NAME VInfoCPP
-  NAMESPACE QRX WDZ
-  OSTREAM_OPERATOR
-  # GIT_WORK_TREE ${PROJECT_SOURCE_DIR}
+include("./3rd/CMakeVersionInfoTarget/VersionInfoTarget.cmake")
+add_version_info_target(NAME VInfoCPP
+  NAMESPACE QrX WdZ
+  # GIT_WORK_TREE ${PROJECT_SOURCE_DIR} # uncomment if project is a git repo
 )
 add_executable(${PROJECT_NAME} main.cpp)
 target_link_libraries(${PROJECT_NAME} PRIVATE VInfoCPP)
@@ -118,7 +116,7 @@ install(TARGETS ${PROJECT_NAME} DESTINATION .)
 #include <iostream>
 #include "VInfoCPP/VersionInfo.hpp"
 int main() {
-  std::cout << QRX::WDZ::VersionInfo() << std::endl;
+  std::cout << QrX::WdZ::VersionSummary << std::endl;
   return 0;
 }
 ```
@@ -127,10 +125,11 @@ int main() {
 
 ```cmake
 # CMakeLists.txt
-cmake_minimum_required(VERSION 3.17)
+cmake_minimum_required(VERSION 3.10)
 project(HelloVersion VERSION 1.2.3 LANGUAGES C)
 include("3rd/CMakeVersionInfoTarget/VersionInfoTarget.cmake")
-version_info_target(NAME VInfoC LANGUAGE C
+add_version_info_target(NAME VInfoC LANGUAGE C
+  NAMESPACE QrX WdZ
   # GIT_WORK_TREE ${PROJECT_SOURCE_DIR}
 )
 add_executable(${PROJECT_NAME} main.c)
@@ -144,9 +143,7 @@ install(TARGETS ${PROJECT_NAME} DESTINATION .)
 #include "VInfoC/VersionInfo.h"
 
 int main() {
-  struct VInfoCVersionInfo vinfo;
-  VInfoC_init(&vinfo);
-  printf("%s\n", VInfoC_summary_string());
+  printf("%s\n", QrX_WdZ_VersionSummary);
   return 0;
 }
 ```
