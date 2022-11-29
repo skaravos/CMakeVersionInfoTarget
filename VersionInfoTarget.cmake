@@ -1,20 +1,18 @@
 cmake_minimum_required(VERSION 3.10)
 
-set(_current_function_list_dir ${CMAKE_CURRENT_LIST_DIR})
-
-#[=[
+#[=============================================================================[
   adds two cmake targets:
     1. a C/C++ static library target that contains project version info
     2. [internal] a cmake custom target that queries version info at build time
 
   add_version_info_target(NAME <unique_target_name>
-                      [LINK_TO targets...]
-                      [NAMESPACE namespaces...]
-                      [LANGUAGE language]
-                      [GIT_WORK_TREE <git_work_tree>]
-                      [PROJECT_NAME <name>]
-                      [PROJECT_VERSION <version>]
-                    )
+                         [LINK_TO targets...]
+                         [NAMESPACE namespaces...]
+                         [LANGUAGE language]
+                         [GIT_WORK_TREE <git_work_tree>]
+                         [PROJECT_NAME <name>]
+                         [PROJECT_VERSION <version>]
+                        )
 
   NAME <unique_target_name>  (required)
     provide the name of a non-existing target
@@ -60,7 +58,7 @@ set(_current_function_list_dir ${CMAKE_CURRENT_LIST_DIR})
     NOTE: the 'tweak' version can be separated using either a period or a hyphen
           e.g. both 1.0.1.1 and 1.0.1-rev1 are valid versions
 
-#]=]
+#]=============================================================================]
 function(add_version_info_target)
 
   # --- parse arguments
@@ -137,8 +135,6 @@ function(add_version_info_target)
     set(_language "C")
     set(_hdr_ext  "h")
     set(_src_ext  "c")
-    set(_compiler_id      ${CMAKE_C_COMPILER_ID})
-    set(_compiler_version ${CMAKE_C_COMPILER_VERSION})
   else()
     if (NOT CMAKE_CXX_COMPILER)
       message(FATAL_ERROR "LANGUAGE CXX specified but no CXX compiler found")
@@ -146,8 +142,6 @@ function(add_version_info_target)
     set(_language "CXX")
     set(_hdr_ext  "hpp")
     set(_src_ext  "cpp")
-    set(_compiler_id      ${CMAKE_CXX_COMPILER_ID})
-    set(_compiler_version ${CMAKE_CXX_COMPILER_VERSION})
   endif()
 
   # --- set internal variables
@@ -226,13 +220,31 @@ function(add_version_info_target)
   __create_vinfo_query_cmake(${_vinfo_query_cmake})
 
   # create header and source file templates (that will be configured at build)
-  if (${_language} STREQUAL "C")
-    __create_vinfo_header_h(${_vinfo_hdr_in})
-    __create_vinfo_source_c(${_vinfo_src_in})
-  else()
-    __create_vinfo_header_hpp(${_vinfo_hdr_in})
-    __create_vinfo_source_cpp(${_vinfo_src_in})
-  endif()
+  __create_vinfo_header_template(
+    TEMPLATE_FILEPATH       ${_vinfo_hdr_in}
+    TARGET_NAME             ${arg_NAME}
+    LANGUAGE                ${_language}
+    NAMESPACE_ACCESS_PREFIX ${_namespace_access_prefix}
+    NAMESPACE_SCOPE_OPENING ${_namespace_scope_opening}
+    NAMESPACE_SCOPE_CLOSING ${_namespace_scope_closing}
+    GIT_WORK_TREE           ${arg_GIT_WORK_TREE}
+  )
+  __create_vinfo_source_template(
+    TEMPLATE_FILEPATH       ${_vinfo_src_in}
+    TARGET_NAME             ${arg_NAME}
+    LANGUAGE                ${_language}
+    PROJECT_NAME            ${_project_name}
+    PROJECT_VERSION         ${_version}
+    PROJECT_VERSION_MAJOR   ${_version_major}
+    PROJECT_VERSION_MINOR   ${_version_minor}
+    PROJECT_VERSION_PATCH   ${_version_patch}
+    PROJECT_VERSION_TWEAK   ${_version_tweak}
+    NAMESPACE_ACCESS_PREFIX ${_namespace_access_prefix}
+    NAMESPACE_SCOPE_OPENING ${_namespace_scope_opening}
+    NAMESPACE_SCOPE_CLOSING ${_namespace_scope_closing}
+    NAMESPACE_SCOPE_RESOLVE ${_namespace_scope_resolve}
+    GIT_WORK_TREE           ${arg_GIT_WORK_TREE}
+  )
 
   # we use file(APPEND ...) here to generate a temporary copies of the source
   # and header files to prevent CMake freaking out about 'file does not exist'
@@ -249,26 +261,11 @@ function(add_version_info_target)
       ${_vinfo_src}
     COMMAND
       ${CMAKE_COMMAND}
-      -D_TARGET_NAME=${arg_NAME}
-      -D_PROJECT_NAME=${_project_name}
-      -D_PROJECT_VERSION=${_version}
-      -D_PROJECT_VERSION_MAJOR=${_version_major}
-      -D_PROJECT_VERSION_MINOR=${_version_minor}
-      -D_PROJECT_VERSION_PATCH=${_version_patch}
-      -D_PROJECT_VERSION_TWEAK=${_version_tweak}
-      -D_NAMESPACE_ACCESS_PREFIX=${_namespace_access_prefix}
-      -D_NAMESPACE_SCOPE_OPENING=${_namespace_scope_opening}
-      -D_NAMESPACE_SCOPE_CLOSING=${_namespace_scope_closing}
-      -D_NAMESPACE_SCOPE_RESOLVE=${_namespace_scope_resolve}
       -D_VINFO_HDR_IN=${_vinfo_hdr_in}
       -D_VINFO_HDR=${_vinfo_hdr}
       -D_VINFO_SRC_IN=${_vinfo_src_in}
       -D_VINFO_SRC=${_vinfo_src}
       -D_GIT_WORK_TREE=${arg_GIT_WORK_TREE}
-      -D_LANGUAGE=${_language}
-      -D_COMPILER_ID=${_compiler_id}
-      -D_COMPILER_VERSION=${_compiler_version}
-      -D_CMAKE_SYSTEM_PROCESSOR=${CMAKE_SYSTEM_PROCESSOR}
       -D_BUILD_TYPE=$<CONFIG>
       -P ${_vinfo_query_cmake}
     COMMENT
@@ -320,127 +317,221 @@ function(add_version_info_target)
 
 endfunction()
 
+#[=============================================================================[
+                            INTERNAL FUNCTION
+#]=============================================================================]
+function(__create_vinfo_header_template)
 
-function(__create_vinfo_header_h arg_TARGET_FILE_PATH)
-  file(WRITE ${arg_TARGET_FILE_PATH} [==========[
+  # extract TARGET_NAME from argument list
+  cmake_parse_arguments(PARSE_ARGV 0 arg "" "TARGET_NAME" "")
+
+  # if the given arguments haven't changed since the last call, do nothing
+  string(SHA256 _argn_hash "${ARGN}")
+  string(MAKE_C_IDENTIFIER "${arg_TARGET_NAME}" _tn)
+  if ("${_argn_hash}" STREQUAL "${_CREATE_VINFO_HEADER_TEMPLATE_LASTHASH_${_tn}}")
+    return()
+  endif()
+
+  # --- parse arguments
+
+  set(_singleargs
+    TEMPLATE_FILEPATH        # absolute path to generated header file
+    LANGUAGE                 # "C" or "CXX"
+    NAMESPACE_ACCESS_PREFIX  # variable prefix   (only used in C)
+    NAMESPACE_SCOPE_OPENING  # namespace opening (only used in C++)
+    NAMESPACE_SCOPE_CLOSING  # namespace closing (only used in C++)
+    GIT_WORK_TREE            # if-defined, insert git related variables
+  )
+  cmake_parse_arguments(arg "" "${_singleargs}" "" ${arg_UNPARSED_ARGUMENTS})
+
+  # --- setup language-specific template features
+
+  if ("${arg_LANGUAGE}" STREQUAL "C")
+    set(_namespace_prefix  ${arg_NAMESPACE_ACCESS_PREFIX})
+    set(_namespace_opening)
+    set(_namespace_closing)
+  else()
+    set(_namespace_prefix)
+    set(_namespace_opening ${arg_NAMESPACE_SCOPE_OPENING})
+    set(_namespace_closing ${arg_NAMESPACE_SCOPE_CLOSING})
+  endif()
+
+  # --- setup git-specific template variables
+
+  if (arg_GIT_WORK_TREE)
+    if ("${arg_LANGUAGE}" STREQUAL "C")
+      set(_git_var_uncommittedchanges
+          "extern const int         ${_namespace_prefix}GitUncommittedChanges; // 0 - false, 1 - true")
+    else()
+      set(_git_var_uncommittedchanges
+          "extern const bool        GitUncommittedChanges;")
+    endif()
+    set(_git_var_gitcommithash "extern const char* const ${_namespace_prefix}GitCommitHash;")
+    set(_git_var_gitcommitdate "extern const char* const ${_namespace_prefix}GitCommitDate;")
+    set(_git_var_gitusername   "extern const char* const ${_namespace_prefix}GitUserName;")
+    set(_git_var_gituseremail  "extern const char* const ${_namespace_prefix}GitUserEmail;")
+  endif()
+
+  # --- write the template file
+
+  file(WRITE "${arg_TEMPLATE_FILEPATH}" "
 /* This file is auto-generated by VersionInfoTarget.cmake, do not edit. */
 #pragma once
 
-extern const char* const @_NAMESPACE_ACCESS_PREFIX@ProjectName;
-extern const char* const @_NAMESPACE_ACCESS_PREFIX@ProjectVersion;
-extern const char* const @_NAMESPACE_ACCESS_PREFIX@ProjectVersionMajor;
-extern const char* const @_NAMESPACE_ACCESS_PREFIX@ProjectVersionMinor;
-extern const char* const @_NAMESPACE_ACCESS_PREFIX@ProjectVersionPatch;
-extern const char* const @_NAMESPACE_ACCESS_PREFIX@ProjectVersionTweak;
-extern const char* const @_NAMESPACE_ACCESS_PREFIX@CompilerId;
-extern const char* const @_NAMESPACE_ACCESS_PREFIX@CompilerVersion;
-extern const char* const @_NAMESPACE_ACCESS_PREFIX@Architecture; // x86  x64
-extern const char* const @_NAMESPACE_ACCESS_PREFIX@BuildType;    // debug  release
-@_GIT_VARIABLE_DECLARATIONS_C@
-extern const char* const @_NAMESPACE_ACCESS_PREFIX@VersionSummary;
-]==========]
-)
-endfunction()
+${_namespace_opening}
+extern const char* const ${_namespace_prefix}ProjectName;
+extern const char* const ${_namespace_prefix}ProjectVersion;
+extern const char* const ${_namespace_prefix}ProjectVersionMajor;
+extern const char* const ${_namespace_prefix}ProjectVersionMinor;
+extern const char* const ${_namespace_prefix}ProjectVersionPatch;
+extern const char* const ${_namespace_prefix}ProjectVersionTweak;
+extern const char* const ${_namespace_prefix}CompilerId;
+extern const char* const ${_namespace_prefix}CompilerVersion;
+extern const char* const ${_namespace_prefix}Architecture; // x86  x64
+extern const char* const ${_namespace_prefix}BuildType;    // debug  release
+extern const char* const ${_namespace_prefix}VersionSummary;
+${_git_var_uncommittedchanges}
+${_git_var_gitcommithash}
+${_git_var_gitcommitdate}
+${_git_var_gitusername}
+${_git_var_gituseremail}
+${_namespace_closing}
+"
+) # end file(WRITE "${arg_TEMPLATE_FILEPATH}"...
 
-function(__create_vinfo_header_hpp arg_TARGET_FILE_PATH)
-  file(WRITE ${arg_TARGET_FILE_PATH} [==========[
+  set(_CREATE_VINFO_HEADER_TEMPLATE_LASTHASH_${_tn} "${_argn_hash}" CACHE INTERNAL "")
+
+endfunction() # __create_vinfo_header_template
+
+#[=============================================================================[
+                            INTERNAL FUNCTION
+#]=============================================================================]
+function(__create_vinfo_source_template)
+
+  # extract TARGET_NAME from argument list
+  cmake_parse_arguments(PARSE_ARGV 0 arg "" "TARGET_NAME" "")
+
+  # if the given arguments haven't changed since the last call, do nothing
+  string(SHA256 _argn_hash "${ARGN}")
+  string(MAKE_C_IDENTIFIER "${arg_TARGET_NAME}" _tn)
+  if ("${_argn_hash}" STREQUAL "${_CREATE_VINFO_SOURCE_TEMPLATE_LASTHASH_${_tn}}")
+    return()
+  endif()
+
+  # --- parse arguments
+
+  set(_singleargs
+    TEMPLATE_FILEPATH       # absolute path to generated header file
+    LANGUAGE                # "C" or "CXX"
+    PROJECT_NAME            # self-explanatory
+    PROJECT_VERSION         # self-explanatory
+    PROJECT_VERSION_MAJOR   # self-explanatory
+    PROJECT_VERSION_MINOR   # self-explanatory
+    PROJECT_VERSION_PATCH   # self-explanatory
+    PROJECT_VERSION_TWEAK   # self-explanatory
+    NAMESPACE_ACCESS_PREFIX # self-explanatory (only used in C)
+    NAMESPACE_SCOPE_OPENING # self-explanatory (only used in C++)
+    NAMESPACE_SCOPE_CLOSING # self-explanatory (only used in C++)
+    NAMESPACE_SCOPE_RESOLVE # self-explanatory (only used in C++)
+    GIT_WORK_TREE           # if-defined, insert git related variables
+  )
+  cmake_parse_arguments(arg "" "${_singleargs}" "" ${arg_UNPARSED_ARGUMENTS})
+
+  # --- setup language-specific template features
+
+  if ("${arg_LANGUAGE}" STREQUAL "C")
+    set(_namespace_prefix  ${arg_NAMESPACE_ACCESS_PREFIX})
+    set(_namespace_opening)
+    set(_namespace_closing)
+    set(_extension "h")
+    set(_compiler_id      ${CMAKE_C_COMPILER_ID})
+    set(_compiler_version ${CMAKE_C_COMPILER_VERSION})
+  else()
+    set(_namespace_prefix)
+    set(_namespace_opening ${arg_NAMESPACE_SCOPE_OPENING})
+    set(_namespace_closing ${arg_NAMESPACE_SCOPE_CLOSING})
+    set(_extension "hpp")
+    set(_compiler_id      ${CMAKE_CXX_COMPILER_ID})
+    set(_compiler_version ${CMAKE_CXX_COMPILER_VERSION})
+  endif()
+
+  # --- setup git-specific template variables
+
+  if (arg_GIT_WORK_TREE)
+    if ("${arg_LANGUAGE}" STREQUAL "C")
+      set(_git_var_uncommittedchanges
+          "const int ${_namespace_prefix}GitUncommittedChanges = @_GIT_UNCOMMITTED_CHANGES@;")
+    else()
+      set(_git_var_uncommittedchanges
+          "const bool GitUncommittedChanges = @_GIT_UNCOMMITTED_CHANGES@;")
+    endif()
+    set(_git_var_gitcommithash "const char* const ${_namespace_prefix}GitCommitHash = \"@_GIT_COMMIT_HASH@\";")
+    set(_git_var_gitcommitdate "const char* const ${_namespace_prefix}GitCommitDate = \"@_GIT_COMMIT_DATE@\";")
+    set(_git_var_gitusername   "const char* const ${_namespace_prefix}GitUserName   = \"@_GIT_USER_NAME@\";")
+    set(_git_var_gituseremail  "const char* const ${_namespace_prefix}GitUserEmail  = \"@_GIT_USER_EMAIL@\";")
+    set(_git_str_constant_hash "\"\\nCommitHash: @_GIT_COMMIT_HASH@@_GIT_UNCOMMITTED_CHANGES_STRING@\"")
+    set(_git_str_constant_user "\"\\nCommitUser: @_GIT_USER_NAME@ (@_GIT_USER_EMAIL@)\"")
+    set(_git_str_constant_date "\"\\nCommitDate: @_GIT_COMMIT_DATE@\"")
+  endif()
+
+  file(WRITE "${arg_TEMPLATE_FILEPATH}" "
 /* This file is auto-generated by VersionInfoTarget.cmake, do not edit. */
-#pragma once
+#include \"${arg_TARGET_NAME}/VersionInfo.${_extension}\"
 
-@_NAMESPACE_SCOPE_OPENING@
-
-extern const char* const ProjectName;
-extern const char* const ProjectVersion;
-extern const char* const ProjectVersionMajor;
-extern const char* const ProjectVersionMinor;
-extern const char* const ProjectVersionPatch;
-extern const char* const ProjectVersionTweak;
-extern const char* const CompilerId;
-extern const char* const CompilerVersion;
-extern const char* const Architecture; // x86  x64
-extern const char* const BuildType;    // debug  release
-@_GIT_VARIABLE_DECLARATIONS_CXX@
-extern const char* const VersionSummary;
-
-@_NAMESPACE_SCOPE_CLOSING@
-]==========]
-)
-endfunction()
-
-
-function(__create_vinfo_source_c arg_TARGET_FILE_PATH)
-  file(WRITE ${arg_TARGET_FILE_PATH} [==========[
-/* This file is auto-generated by VersionInfoTarget.cmake, do not edit. */
-#include "@_TARGET_NAME@/VersionInfo.h"
-
-const char* const @_NAMESPACE_ACCESS_PREFIX@ProjectName         = "@_PROJECT_NAME@";
-const char* const @_NAMESPACE_ACCESS_PREFIX@ProjectVersion      = "@_PROJECT_VERSION@";
-const char* const @_NAMESPACE_ACCESS_PREFIX@ProjectVersionMajor = "@_PROJECT_VERSION_MAJOR@";
-const char* const @_NAMESPACE_ACCESS_PREFIX@ProjectVersionMinor = "@_PROJECT_VERSION_MINOR@";
-const char* const @_NAMESPACE_ACCESS_PREFIX@ProjectVersionPatch = "@_PROJECT_VERSION_PATCH@";
-const char* const @_NAMESPACE_ACCESS_PREFIX@ProjectVersionTweak = "@_PROJECT_VERSION_TWEAK@";
-const char* const @_NAMESPACE_ACCESS_PREFIX@CompilerId          = "@_COMPILER_ID@";
-const char* const @_NAMESPACE_ACCESS_PREFIX@CompilerVersion     = "@_COMPILER_VERSION@";
-const char* const @_NAMESPACE_ACCESS_PREFIX@Architecture        = "@_CMAKE_SYSTEM_PROCESSOR@";
-const char* const @_NAMESPACE_ACCESS_PREFIX@BuildType           = "@_BUILD_TYPE@";
-@_GIT_VARIABLE_DEFINITIONS_C@
-const char* const @_NAMESPACE_ACCESS_PREFIX@VersionSummary      =
-"Project: @_PROJECT_NAME@"
-"\nVersion: @_PROJECT_VERSION@"
-"\nCompiler: @_COMPILER_ID@-@_COMPILER_VERSION@"
-"\nPlatform: @_CMAKE_SYSTEM_PROCESSOR@@_BUILD_TYPE_SUFFIX@"
-@_GIT_PRINTOUT_SUMMARY@
+${_namespace_opening}
+const char* const ${_namespace_prefix}ProjectName         = \"${arg_PROJECT_NAME}\";
+const char* const ${_namespace_prefix}ProjectVersion      = \"${arg_PROJECT_VERSION}\";
+const char* const ${_namespace_prefix}ProjectVersionMajor = \"${arg_PROJECT_VERSION_MAJOR}\";
+const char* const ${_namespace_prefix}ProjectVersionMinor = \"${arg_PROJECT_VERSION_MINOR}\";
+const char* const ${_namespace_prefix}ProjectVersionPatch = \"${arg_PROJECT_VERSION_PATCH}\";
+const char* const ${_namespace_prefix}ProjectVersionTweak = \"${arg_PROJECT_VERSION_TWEAK}\";
+const char* const ${_namespace_prefix}CompilerId          = \"${_compiler_id}\";
+const char* const ${_namespace_prefix}CompilerVersion     = \"${_compiler_version}\";
+const char* const ${_namespace_prefix}Architecture        = \"${CMAKE_SYSTEM_PROCESSOR}\";
+const char* const ${_namespace_prefix}BuildType           = \"@_BUILD_TYPE@\";
+const char* const ${_namespace_prefix}VersionSummary      =
+\"Project: ${arg_PROJECT_NAME}\"
+\"\\nVersion: ${arg_PROJECT_VERSION}\"
+\"\\nCompiler: ${_compiler_id}-${_compiler_version}\"
+\"\\nPlatform: ${CMAKE_SYSTEM_PROCESSOR}@_BUILD_TYPE_SUFFIX@\"
+${_git_str_constant_hash}
+${_git_str_constant_user}
+${_git_str_constant_date}
 ;
-]==========]
-)
-endfunction()
 
-function(__create_vinfo_source_cpp arg_TARGET_FILE_PATH)
-  file(WRITE ${arg_TARGET_FILE_PATH} [==========[
-/* This file is auto-generated by VersionInfoTarget.cmake, do not edit. */
-#include "@_TARGET_NAME@/VersionInfo.hpp"
+${_git_var_uncommittedchanges}
+${_git_var_gitcommithash}
+${_git_var_gitcommitdate}
+${_git_var_gitusername}
+${_git_var_gituseremail}
 
-@_NAMESPACE_SCOPE_OPENING@
+${_namespace_closing}
+"
+) # end file(WRITE "${arg_TEMPLATE_FILEPATH}"...
 
-const char* const ProjectName         = "@_PROJECT_NAME@";
-const char* const ProjectVersion      = "@_PROJECT_VERSION@";
-const char* const ProjectVersionMajor = "@_PROJECT_VERSION_MAJOR@";
-const char* const ProjectVersionMinor = "@_PROJECT_VERSION_MINOR@";
-const char* const ProjectVersionPatch = "@_PROJECT_VERSION_PATCH@";
-const char* const ProjectVersionTweak = "@_PROJECT_VERSION_TWEAK@";
-const char* const CompilerId          = "@_COMPILER_ID@";
-const char* const CompilerVersion     = "@_COMPILER_VERSION@";
-const char* const Architecture        = "@_CMAKE_SYSTEM_PROCESSOR@";
-const char* const BuildType           = "@_BUILD_TYPE@";
-@_GIT_VARIABLE_DEFINITIONS_CXX@
-const char* const VersionSummary      =
-"Project: @_PROJECT_NAME@"
-"\nVersion: @_PROJECT_VERSION@"
-"\nCompiler: @_COMPILER_ID@-@_COMPILER_VERSION@"
-"\nPlatform: @_CMAKE_SYSTEM_PROCESSOR@@_BUILD_TYPE_SUFFIX@"
-@_GIT_PRINTOUT_SUMMARY@
-;
+  set(_CREATE_VINFO_SOURCE_TEMPLATE_LASTHASH_${_tn} "${_argn_hash}" CACHE INTERNAL "")
 
-@_NAMESPACE_SCOPE_CLOSING@
-]==========]
-)
-endfunction()
+endfunction() # __create_vinfo_source_template
 
-
-function(__create_vinfo_query_cmake target_file_path)
-  file(WRITE ${target_file_path} [==========[
+#[=============================================================================[
+                            INTERNAL FUNCTION
+#]=============================================================================]
+function(__create_vinfo_query_cmake arg_TARGET_FILEPATH)
+  if (EXISTS "${arg_TARGET_FILEPATH}")
+    return()
+  endif()
+  file(WRITE ${arg_TARGET_FILEPATH} [==========[
 # This file is auto-generated by VersionInfoTarget.cmake, do not edit.
 
-# This file configures the VersionInfo header and source files with system
-# and project information such as:
-#   Project Name, Compiler version & ID, System Processor Arch, Config Type
+# This file configures the VersionInfo header and source files with build-time
+# information relating to the current build (debug, release, etc.)
 #
 # It also uses the git executable to determine relevant repository info:
 #   Dirty Status, Commit Date, Commit Hash, User Name, User Email
 #
 # This module is NOT designed to be directly included in a CMakeLists.txt file.
 #
-# It is called as a COMMAND in a custom_target.
+# It should be called as a COMMAND in a custom_target.
 # Because the information is inserted into the Version header at the time this
 # file is parsed, the goal is to have this file be parsed right before the main
 # program executable is compiled. Calling this file from a custom_target ensures
@@ -456,11 +547,13 @@ if (_GIT_WORK_TREE)
   )
   if (_git_status_output)
     set(_GIT_UNCOMMITTED_CHANGES "1")
+    set(_GIT_UNCOMMITTED_CHANGES_STRING " (uncommitted changes)")
     message(WARNING
     "\nGit repository is dirty (uncommitted changes); do not release this version"
     )
   else()
     set(_GIT_UNCOMMITTED_CHANGES "0")
+    set(_GIT_UNCOMMITTED_CHANGES_STRING)
   endif()
   # --- Git Revision Hash
   execute_process(
@@ -490,49 +583,6 @@ if (_GIT_WORK_TREE)
     OUTPUT_VARIABLE _GIT_USER_EMAIL
     OUTPUT_STRIP_TRAILING_WHITESPACE
   )
-
-  set(_GIT_VARIABLE_DECLARATIONS_CXX "
-extern const bool        GitUncommittedChanges;
-extern const char* const GitCommitHash;
-extern const char* const GitCommitDate;
-extern const char* const GitUserName;
-extern const char* const GitUserEmail;
-")
-
-  set(_GIT_VARIABLE_DECLARATIONS_C "
-extern const int         ${_NAMESPACE_ACCESS_PREFIX}GitUncommittedChanges; // 0 - false, 1 - true
-extern const char* const ${_NAMESPACE_ACCESS_PREFIX}GitCommitHash;
-extern const char* const ${_NAMESPACE_ACCESS_PREFIX}GitCommitDate;
-extern const char* const ${_NAMESPACE_ACCESS_PREFIX}GitUserName;
-extern const char* const ${_NAMESPACE_ACCESS_PREFIX}GitUserEmail;
-")
-
-  set(_GIT_VARIABLE_DEFINITIONS_CXX "
-const bool        GitUncommittedChanges = ${_GIT_UNCOMMITTED_CHANGES};
-const char* const GitCommitHash = \"${_GIT_COMMIT_HASH}\";
-const char* const GitCommitDate = \"${_GIT_COMMIT_DATE}\";
-const char* const GitUserName   = \"${_GIT_USER_NAME}\";
-const char* const GitUserEmail  = \"${_GIT_USER_EMAIL}\";
-")
-
-  set(_GIT_VARIABLE_DEFINITIONS_C "
-const int         ${_NAMESPACE_ACCESS_PREFIX}GitUncommittedChanges = ${_GIT_UNCOMMITTED_CHANGES};
-const char* const ${_NAMESPACE_ACCESS_PREFIX}GitCommitHash = \"${_GIT_COMMIT_HASH}\";
-const char* const ${_NAMESPACE_ACCESS_PREFIX}GitCommitDate = \"${_GIT_COMMIT_DATE}\";
-const char* const ${_NAMESPACE_ACCESS_PREFIX}GitUserName   = \"${_GIT_USER_NAME}\";
-const char* const ${_NAMESPACE_ACCESS_PREFIX}GitUserEmail  = \"${_GIT_USER_EMAIL}\";
-")
-
-  if (_GIT_UNCOMMITTED_CHANGES)
-    set(_GIT_UNCOMMITTED_CHANGES_STRING " (uncommitted changes)")
-  endif()
-  set(_GIT_PRINTOUT_SUMMARY
-"\"\\nCommitHash: ${_GIT_COMMIT_HASH}${_GIT_UNCOMMITTED_CHANGES_STRING}\"
-\"\\nCommitUser: ${_GIT_USER_NAME} (${_GIT_USER_EMAIL})\"
-\"\\nCommitDate: ${_GIT_COMMIT_DATE}\""
-)
-
-
 endif(_GIT_WORK_TREE)
 
 # --- C++ specific features
@@ -540,10 +590,6 @@ endif(_GIT_WORK_TREE)
 if (_BUILD_TYPE)
   set(_BUILD_TYPE_SUFFIX "-${_BUILD_TYPE}")
 endif()
-
-set(_AUTOGENERATED_FILE_WARNING
-  "// This file was autogenerated by 'VersionInfoTarget.cmake', do not edit"
-)
 
 # --- Configure Version header
 

@@ -67,7 +67,7 @@ project as a git submodule. This avoids file duplication!*
 
 ## Usage - CMake
 
-Copy the module directory into your project (*or add as a git submodule*)
+Copy the module file into your project (*or add as a git submodule*)
 
 Then you just need to include it from your `CMakeLists.txt` file like so:
 
