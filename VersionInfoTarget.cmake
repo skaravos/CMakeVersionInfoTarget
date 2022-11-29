@@ -15,7 +15,8 @@ cmake_minimum_required(VERSION 3.10)
                         )
 
   NAME <unique_target_name>  (required)
-    provide the name of a non-existing target
+    provides the name of the static library target to create
+    An alias target will also be created: 'VersionInfo::<unique_target_name>'
 
   LINK_TO targets... (optional)
     if provided, this library will be automatically linked to all given targets
@@ -279,6 +280,7 @@ function(add_version_info_target)
   # --- create library target
 
   add_library(${arg_NAME} STATIC)
+  add_library(VersionInfo::${arg_NAME} ALIAS ${arg_NAME})
 
   target_sources(${arg_NAME} PRIVATE ${_vinfo_hdr} ${_vinfo_src})
 
