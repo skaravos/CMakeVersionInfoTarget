@@ -29,10 +29,12 @@ cmake_minimum_required(VERSION 3.10)
         # CMakeLists.txt
         add_version_info_target(NAME FooVersion NAMESPACE Abc XyZ LANGUAGE CXX)
         // 'VersionInfo.hpp'
-        namespace Abc { namespace XyZ {
+        namespace Abc {
+        namespace XyZ {
           extern const char* const ProjectName;
           ...
-        }}
+        }
+        }
 
       ex. (LANGUAGE=C)
         # CMakeLists.txt
@@ -203,8 +205,8 @@ function(add_version_info_target)
     # for each additional namespace in the argument list (if-any)
     foreach(_ns ${_namespace})
       set(_namespace_access_prefix "${_namespace_access_prefix}${_ns}_")
-      set(_namespace_scope_opening "${_namespace_scope_opening} namespace ${_ns} {")
-      set(_namespace_scope_closing "${_namespace_scope_closing} } /* namespace ${_ns} */")
+      set(_namespace_scope_opening "${_namespace_scope_opening}\nnamespace ${_ns} {")
+      set(_namespace_scope_closing "${_namespace_scope_closing}\n} /* namespace ${_ns} */")
       set(_namespace_scope_resolve "${_namespace_scope_resolve}${_ns}::")
     endforeach()
   endif()
