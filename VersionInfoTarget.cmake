@@ -471,7 +471,7 @@ function(__create_vinfo_source_template)
           "const int ${_namespace_prefix}GitUncommittedChanges = @_GIT_UNCOMMITTED_CHANGES@;")
     else()
       set(_git_var_uncommittedchanges
-          "const bool GitUncommittedChanges = @_GIT_UNCOMMITTED_CHANGES@;")
+          "const bool GitUncommittedChanges = static_cast<bool>(@_GIT_UNCOMMITTED_CHANGES@);")
     endif()
     set(_git_var_gitcommithash  "const char* const ${_namespace_prefix}GitCommitHash  = \"@_GIT_COMMIT_HASH@\";")
     set(_git_var_gitcommitdate  "const char* const ${_namespace_prefix}GitCommitDate  = \"@_GIT_COMMIT_DATE@\";")
