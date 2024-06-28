@@ -18,6 +18,7 @@ The following information is made available to any target linking to the target:
 Optionally, this module can query and store Git repository information.
 
 - git commit hash (which was checked out at time of compile)
+- git commit user (name & email)
 - git commit author (name & email)
 - git commit date
 - git repo status (indicates if there was uncommitted changes at compile time)
