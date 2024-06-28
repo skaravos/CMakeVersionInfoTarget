@@ -370,10 +370,12 @@ function(__create_vinfo_header_template)
       set(_git_var_uncommittedchanges
           "extern const bool        GitUncommittedChanges;")
     endif()
-    set(_git_var_gitcommithash "extern const char* const ${_namespace_prefix}GitCommitHash;")
-    set(_git_var_gitcommitdate "extern const char* const ${_namespace_prefix}GitCommitDate;")
-    set(_git_var_gitusername   "extern const char* const ${_namespace_prefix}GitUserName;")
-    set(_git_var_gituseremail  "extern const char* const ${_namespace_prefix}GitUserEmail;")
+    set(_git_var_gitcommithash   "extern const char* const ${_namespace_prefix}GitCommitHash;")
+    set(_git_var_gitcommitdate   "extern const char* const ${_namespace_prefix}GitCommitDate;")
+    set(_git_var_gitusername     "extern const char* const ${_namespace_prefix}GitUserName;")
+    set(_git_var_gituseremail    "extern const char* const ${_namespace_prefix}GitUserEmail;")
+    set(_git_var_gitauthorname   "extern const char* const ${_namespace_prefix}GitAuthorName;")
+    set(_git_var_gitauthoremail  "extern const char* const ${_namespace_prefix}GitAuthorEmail;")
   endif()
 
   # --- write the template file
@@ -399,6 +401,8 @@ ${_git_var_gitcommithash}
 ${_git_var_gitcommitdate}
 ${_git_var_gitusername}
 ${_git_var_gituseremail}
+${_git_var_gitauthorname}
+${_git_var_gitauthoremail}
 ${_namespace_closing}
 "
 ) # end file(WRITE "${arg_TEMPLATE_FILEPATH}"...
@@ -469,10 +473,12 @@ function(__create_vinfo_source_template)
       set(_git_var_uncommittedchanges
           "const bool GitUncommittedChanges = @_GIT_UNCOMMITTED_CHANGES@;")
     endif()
-    set(_git_var_gitcommithash "const char* const ${_namespace_prefix}GitCommitHash = \"@_GIT_COMMIT_HASH@\";")
-    set(_git_var_gitcommitdate "const char* const ${_namespace_prefix}GitCommitDate = \"@_GIT_COMMIT_DATE@\";")
-    set(_git_var_gitusername   "const char* const ${_namespace_prefix}GitUserName   = \"@_GIT_USER_NAME@\";")
-    set(_git_var_gituseremail  "const char* const ${_namespace_prefix}GitUserEmail  = \"@_GIT_USER_EMAIL@\";")
+    set(_git_var_gitcommithash  "const char* const ${_namespace_prefix}GitCommitHash  = \"@_GIT_COMMIT_HASH@\";")
+    set(_git_var_gitcommitdate  "const char* const ${_namespace_prefix}GitCommitDate  = \"@_GIT_COMMIT_DATE@\";")
+    set(_git_var_gitusername    "const char* const ${_namespace_prefix}GitUserName    = \"@_GIT_USER_NAME@\";")
+    set(_git_var_gituseremail   "const char* const ${_namespace_prefix}GitUserEmail   = \"@_GIT_USER_EMAIL@\";")
+    set(_git_var_gitauthoremail "const char* const ${_namespace_prefix}GitAuthorEmail = \"@_GIT_AUTHOR_EMAIL@\";")
+    set(_git_var_gitauthorname  "const char* const ${_namespace_prefix}GitAuthorName  = \"@_GIT_AUTHOR_NAME@\";")
     set(_git_str_constant_hash "\"\\nCommitHash: @_GIT_COMMIT_HASH@@_GIT_UNCOMMITTED_CHANGES_STRING@\"")
     set(_git_str_constant_user "\"\\nCommitUser: @_GIT_USER_NAME@ (@_GIT_USER_EMAIL@)\"")
     set(_git_str_constant_date "\"\\nCommitDate: @_GIT_COMMIT_DATE@\"")
@@ -508,6 +514,8 @@ ${_git_var_gitcommithash}
 ${_git_var_gitcommitdate}
 ${_git_var_gitusername}
 ${_git_var_gituseremail}
+${_git_var_gitauthorname}
+${_git_var_gitauthoremail}
 
 ${_namespace_closing}
 "
@@ -531,7 +539,8 @@ function(__create_vinfo_query_cmake arg_TARGET_FILEPATH)
 # information relating to the current build (debug, release, etc.)
 #
 # It also uses the git executable to determine relevant repository info:
-#   Dirty Status, Commit Date, Commit Hash, User Name, User Email
+#   Dirty Status, Commit Date, Commit Hash, Commit User Name, Commit User Email,
+#   Commit Author Name, Commit Author Email
 #
 # This module is NOT designed to be directly included in a CMakeLists.txt file.
 #
@@ -585,6 +594,20 @@ if (_GIT_WORK_TREE)
     COMMAND ${GIT_EXECUTABLE} show -s --format=%ce
     WORKING_DIRECTORY ${_GIT_WORK_TREE}
     OUTPUT_VARIABLE _GIT_USER_EMAIL
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+  # --- Git Author Name
+  execute_process(
+    COMMAND ${GIT_EXECUTABLE} show -s --format=%an
+    WORKING_DIRECTORY ${_GIT_WORK_TREE}
+    OUTPUT_VARIABLE _GIT_AUTHOR_NAME
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+  # --- Git Author Email
+  execute_process(
+    COMMAND ${GIT_EXECUTABLE} show -s --format=%ae
+    WORKING_DIRECTORY ${_GIT_WORK_TREE}
+    OUTPUT_VARIABLE _GIT_AUTHOR_EMAIL
     OUTPUT_STRIP_TRAILING_WHITESPACE
   )
 endif(_GIT_WORK_TREE)
