@@ -396,6 +396,7 @@ extern const char* const ${_namespace_prefix}CompilerVersion;
 extern const char* const ${_namespace_prefix}Architecture; // x86  x64
 extern const char* const ${_namespace_prefix}BuildType;    // debug  release
 extern const char* const ${_namespace_prefix}VersionSummary;
+extern const char* const ${_namespace_prefix}VersionSummaryDetailed;
 ${_git_var_uncommittedchanges}
 ${_git_var_gitcommithash}
 ${_git_var_gitcommitdate}
@@ -468,7 +469,7 @@ function(__create_vinfo_source_template)
   if (arg_GIT_WORK_TREE)
     if ("${arg_LANGUAGE}" STREQUAL "C")
       set(_git_var_uncommittedchanges
-          "const int ${_namespace_prefix}GitUncommittedChanges = @_GIT_UNCOMMITTED_CHANGES@;")
+          "const int ${_namespace_prefix}GitUncommittedChanges  = @_GIT_UNCOMMITTED_CHANGES@;")
     else()
       set(_git_var_uncommittedchanges
           "const bool GitUncommittedChanges = static_cast<bool>(@_GIT_UNCOMMITTED_CHANGES@);")
@@ -477,11 +478,18 @@ function(__create_vinfo_source_template)
     set(_git_var_gitcommitdate  "const char* const ${_namespace_prefix}GitCommitDate  = \"@_GIT_COMMIT_DATE@\";")
     set(_git_var_gitusername    "const char* const ${_namespace_prefix}GitUserName    = \"@_GIT_USER_NAME@\";")
     set(_git_var_gituseremail   "const char* const ${_namespace_prefix}GitUserEmail   = \"@_GIT_USER_EMAIL@\";")
-    set(_git_var_gitauthoremail "const char* const ${_namespace_prefix}GitAuthorEmail = \"@_GIT_AUTHOR_EMAIL@\";")
     set(_git_var_gitauthorname  "const char* const ${_namespace_prefix}GitAuthorName  = \"@_GIT_AUTHOR_NAME@\";")
+    set(_git_var_gitauthoremail "const char* const ${_namespace_prefix}GitAuthorEmail = \"@_GIT_AUTHOR_EMAIL@\";")
     set(_git_str_constant_hash "\"\\nCommitHash: @_GIT_COMMIT_HASH@@_GIT_UNCOMMITTED_CHANGES_STRING@\"")
     set(_git_str_constant_user "\"\\nCommitUser: @_GIT_USER_NAME@ (@_GIT_USER_EMAIL@)\"")
     set(_git_str_constant_date "\"\\nCommitDate: @_GIT_COMMIT_DATE@\"")
+    set(_git_str_constant_equals_githaduncommitted "\"\\nGitHadUncommittedChanges='@_GIT_UNCOMMITTED_CHANGES@'\"")
+    set(_git_str_constant_equals_gitcommithash     "\"\\nGitCommitHash='@_GIT_COMMIT_HASH@'\"")
+    set(_git_str_constant_equals_gitcommitdate     "\"\\nGitCommitDate='@_GIT_COMMIT_DATE@'\"")
+    set(_git_str_constant_equals_gitusername       "\"\\nGitUserName='@_GIT_USER_NAME@'\"")
+    set(_git_str_constant_equals_gituseremail      "\"\\nGitUserEmail='@_GIT_USER_EMAIL@'\"")
+    set(_git_str_constant_equals_gitauthorname     "\"\\nGitAuthorName='@_GIT_AUTHOR_NAME@'\"")
+    set(_git_str_constant_equals_gitauthoremail    "\"\\nGitAuthorEmail='@_GIT_AUTHOR_EMAIL@'\"")
   endif()
 
   file(WRITE "${arg_TEMPLATE_FILEPATH}" "
@@ -499,7 +507,16 @@ const char* const ${_namespace_prefix}CompilerId          = \"${_compiler_id}\";
 const char* const ${_namespace_prefix}CompilerVersion     = \"${_compiler_version}\";
 const char* const ${_namespace_prefix}Architecture        = \"${CMAKE_SYSTEM_PROCESSOR}\";
 const char* const ${_namespace_prefix}BuildType           = \"@_BUILD_TYPE@\";
-const char* const ${_namespace_prefix}VersionSummary      =
+
+${_git_var_uncommittedchanges}
+${_git_var_gitcommithash}
+${_git_var_gitcommitdate}
+${_git_var_gitusername}
+${_git_var_gituseremail}
+${_git_var_gitauthorname}
+${_git_var_gitauthoremail}
+
+const char* const ${_namespace_prefix}VersionSummary =
 \"Project: ${arg_PROJECT_NAME}\"
 \"\\nVersion: ${arg_PROJECT_VERSION}\"
 \"\\nCompiler: ${_compiler_id}-${_compiler_version}\"
@@ -509,13 +526,25 @@ ${_git_str_constant_user}
 ${_git_str_constant_date}
 ;
 
-${_git_var_uncommittedchanges}
-${_git_var_gitcommithash}
-${_git_var_gitcommitdate}
-${_git_var_gitusername}
-${_git_var_gituseremail}
-${_git_var_gitauthorname}
-${_git_var_gitauthoremail}
+const char* const ${_namespace_prefix}VersionSummaryDetailed =
+\"ProjectName='${arg_PROJECT_NAME}'\"
+\"\\nProjectVersion='${arg_PROJECT_VERSION}'\"
+\"\\nProjectVersionMajor='${arg_PROJECT_VERSION_MAJOR}'\"
+\"\\nProjectVersionMinor='${arg_PROJECT_VERSION_MINOR}'\"
+\"\\nProjectVersionPatch='${arg_PROJECT_VERSION_PATCH}'\"
+\"\\nProjectVersionTweak='${arg_PROJECT_VERSION_TWEAK}'\"
+\"\\nCompilerId='${_compiler_id}'\"
+\"\\nCompilerVersion='${_compiler_version}'\"
+\"\\nArchitecture='${CMAKE_SYSTEM_PROCESSOR}'\"
+\"\\nBuildType='@_BUILD_TYPE@'\"
+${_git_str_constant_equals_githaduncommitted}
+${_git_str_constant_equals_gitcommithash}
+${_git_str_constant_equals_gitcommitdate}
+${_git_str_constant_equals_gitusername}
+${_git_str_constant_equals_gituseremail}
+${_git_str_constant_equals_gitauthorname}
+${_git_str_constant_equals_gitauthoremail}
+;
 
 ${_namespace_closing}
 "
