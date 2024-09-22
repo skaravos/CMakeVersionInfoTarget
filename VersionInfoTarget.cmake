@@ -46,8 +46,9 @@ cmake_minimum_required(VERSION 3.10)
   LANGUAGE language (optional;default=CXX)
     specify the language used for the header and source files (C or CXX)
 
-  GIT_WORK_TREE (optional)
+  GIT_WORK_TREE <git_work_tree> (optional)
     if provided, git commit information will be queried at build-time
+    from the given <git_work_tree>
     NOTE: this option requires cmake to be able to find_package(Git)
 
   PROJECT_NAME <name>  (optional; default=name of current project)
