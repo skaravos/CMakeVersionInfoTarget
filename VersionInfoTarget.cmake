@@ -181,7 +181,7 @@ function(add_version_info_target)
     endif()
   endif()
 
-  if (arg_LANGUAGE AND (NOT "${arg_LANGUAGE}" MATCHES [[^(C|CXX|C\+\+)$]]))
+  if (arg_LANGUAGE AND (NOT "${arg_LANGUAGE}" MATCHES [[^(C|CXX|C\+\+|CPP)$]]))
     __invalid_argument("LANGUAGE" "must be one of: C or CXX")
   endif()
 
