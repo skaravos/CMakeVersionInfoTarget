@@ -31,25 +31,30 @@ cmake_minimum_required(VERSION 3.10)
     1. a C/C++ static library target that contains project version info
     2. [internal] a cmake custom target that queries version info at build time
 
-  add_version_info_target(NAME <unique_target_name>
-                         [LINK_TO targets...]
-                         [NAMESPACE namespaces...]
-                         [LANGUAGE language]
+  add_version_info_target(NAME unique_target_name
+                         [LINK_TO <target>...]
+                         [NAMESPACE <namespace>...]
+                         [LANGUAGE <language>]
                          [GIT_WORK_TREE <git_work_tree>]
                          [PROJECT_NAME <name>]
                          [PROJECT_VERSION <version>]
                         )
 
-  NAME <unique_target_name>  (required)
+  NAME <unique_target_name>
+    (required)
     provides the name of the static library target to create
     An alias target will also be created: 'VersionInfo::<unique_target_name>'
 
-  LINK_TO targets... (optional)
+  LINK_TO <target> ...
+    (optional)
     if provided, this library will be automatically linked to all given targets
 
-  NAMESPACE namespaces... (optional; default="VersionInfo")
+  NAMESPACE <namespace> ...
+    (optional; default="VersionInfo")
     if provided, the variables contained in the generated headers files will be
     enclosed in a namespace (C++) or have an underscore_separated prefix (C).
+    NOTE: to disable the default namespace entirely and declare the variables
+          in the global scope, you can provide an empty string as the namespace
 
       ex. (LANGUAGE=C++)
         # CMakeLists.txt
@@ -69,7 +74,8 @@ cmake_minimum_required(VERSION 3.10)
         extern const char* const Abc_XyZ_ProjectName;
         ...
 
-  LANGUAGE language (optional;default=CXX)
+  LANGUAGE <language>
+    (optional; default=CXX)
     specify the language used for the header and source files (C or CXX)
 
   GIT_WORK_TREE <git_work_tree> (optional)
@@ -79,9 +85,11 @@ cmake_minimum_required(VERSION 3.10)
     NOTE: if the git_work_tree is provided as a relative path it will be
           considered relative to the \${CMAKE_CURRENT_SOURCE_DIR}
 
-  PROJECT_NAME <name>  (optional; default=name of current project)
-    if provided, the target will use the given name instead of the current
-    project name.
+  PROJECT_NAME <name>
+    (optional; default=\${PROJECT_NAME})
+    if provided, the generated library will contain the given project <name>
+    instead of the current cmake project name taken from the \${PROJECT_NAME}
+    cmake variable
 
   PROJECT_VERSION <version>
     (optional; default=\${PROJECT_VERSION})
