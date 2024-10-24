@@ -124,6 +124,10 @@ function(add_version_info_target)
     __unknown_argument("${_arg}")
   endforeach()
 
+  foreach(_arg IN LISTS arg_KEYWORDS_MISSING_VALUES)
+    __invalid_argument("${_arg}" "cannot be provided without a value")
+  endforeach()
+
   # --- validate arguments
 
   if (NOT arg_NAME)
