@@ -304,30 +304,30 @@ function(add_version_info_target)
 
   # create header and source file templates (that will be configured at build)
   __create_vinfo_header_template(
-    TEMPLATE_FILEPATH       ${_vinfo_hdr_in}
-    TARGET_NAME             ${arg_NAME}
-    LANGUAGE                ${_language}
-    NAMESPACE_ACCESS_PREFIX ${_namespace_access_prefix}
-    NAMESPACE_SCOPE_OPENING ${_namespace_scope_opening}
-    NAMESPACE_SCOPE_CLOSING ${_namespace_scope_closing}
-    GIT_WORK_TREE           ${_git_work_tree}
+    TEMPLATE_FILEPATH       "${_vinfo_hdr_in}"
+    TARGET_NAME             "${arg_NAME}"
+    LANGUAGE                "${_language}"
+    NAMESPACE_ACCESS_PREFIX "${_namespace_access_prefix}"
+    NAMESPACE_SCOPE_OPENING "${_namespace_scope_opening}"
+    NAMESPACE_SCOPE_CLOSING "${_namespace_scope_closing}"
+    GIT_WORK_TREE           "${_git_work_tree}"
   )
   __create_vinfo_source_template(
-    TEMPLATE_FILEPATH       ${_vinfo_src_in}
-    TARGET_NAME             ${arg_NAME}
-    LANGUAGE                ${_language}
-    PROJECT_NAME            ${_project_name}
-    PROJECT_VERSION         ${_version}
-    PROJECT_VERSION_MAJOR   ${_version_major}
-    PROJECT_VERSION_MINOR   ${_version_minor}
-    PROJECT_VERSION_PATCH   ${_version_patch}
-    PROJECT_VERSION_TWEAK   ${_version_tweak}
-    PROJECT_VERSION_SUFFIX  ${_version_suffix}
-    NAMESPACE_ACCESS_PREFIX ${_namespace_access_prefix}
-    NAMESPACE_SCOPE_OPENING ${_namespace_scope_opening}
-    NAMESPACE_SCOPE_CLOSING ${_namespace_scope_closing}
-    NAMESPACE_SCOPE_RESOLVE ${_namespace_scope_resolve}
-    GIT_WORK_TREE           ${_git_work_tree}
+    TEMPLATE_FILEPATH       "${_vinfo_src_in}"
+    TARGET_NAME             "${arg_NAME}"
+    LANGUAGE                "${_language}"
+    PROJECT_NAME            "${_project_name}"
+    PROJECT_VERSION         "${_version}"
+    PROJECT_VERSION_MAJOR   "${_version_major}"
+    PROJECT_VERSION_MINOR   "${_version_minor}"
+    PROJECT_VERSION_PATCH   "${_version_patch}"
+    PROJECT_VERSION_TWEAK   "${_version_tweak}"
+    PROJECT_VERSION_SUFFIX  "${_version_suffix}"
+    NAMESPACE_ACCESS_PREFIX "${_namespace_access_prefix}"
+    NAMESPACE_SCOPE_OPENING "${_namespace_scope_opening}"
+    NAMESPACE_SCOPE_CLOSING "${_namespace_scope_closing}"
+    NAMESPACE_SCOPE_RESOLVE "${_namespace_scope_resolve}"
+    GIT_WORK_TREE           "${_git_work_tree}"
   )
 
   # we use file(APPEND ...) here to generate a temporary copies of the source
@@ -408,20 +408,10 @@ endfunction()
                             INTERNAL FUNCTION
 #]=============================================================================]
 function(__create_vinfo_header_template)
-
-  # extract TARGET_NAME from argument list
-  cmake_parse_arguments(PARSE_ARGV 0 arg "" "TARGET_NAME" "")
-
-  # if the given arguments haven't changed since the last call, do nothing
-  string(SHA256 _argn_hash "${ARGN}")
-  string(MAKE_C_IDENTIFIER "${arg_TARGET_NAME}" _tn)
-  if ("${_argn_hash}" STREQUAL "${_CREATE_VINFO_HEADER_TEMPLATE_LASTHASH_${_tn}}")
-    return()
-  endif()
-
   # --- parse arguments
 
   set(_singleargs
+    TARGET_NAME
     TEMPLATE_FILEPATH        # absolute path to generated header file
     LANGUAGE                 # "C" or "CXX"
     NAMESPACE_ACCESS_PREFIX  # variable prefix   (only used in C)
@@ -429,7 +419,14 @@ function(__create_vinfo_header_template)
     NAMESPACE_SCOPE_CLOSING  # namespace closing (only used in C++)
     GIT_WORK_TREE            # if-defined, insert git related variables
   )
-  cmake_parse_arguments(arg "" "${_singleargs}" "" ${arg_UNPARSED_ARGUMENTS})
+  cmake_parse_arguments(PARSE_ARGV 0 arg "" "${_singleargs}" "")
+
+  # if the given arguments haven't changed since the last call, do nothing
+  string(SHA256 _argn_hash "${ARGN}")
+  string(MAKE_C_IDENTIFIER "${arg_TARGET_NAME}" _tn)
+  if ("${_argn_hash}" STREQUAL "${_CREATE_VINFO_HEADER_TEMPLATE_LASTHASH_${_tn}}")
+    return()
+  endif()
 
   # --- setup language-specific template features
 
@@ -501,19 +498,10 @@ endfunction() # __create_vinfo_header_template
 #]=============================================================================]
 function(__create_vinfo_source_template)
 
-  # extract TARGET_NAME from argument list
-  cmake_parse_arguments(PARSE_ARGV 0 arg "" "TARGET_NAME" "")
-
-  # if the given arguments haven't changed since the last call, do nothing
-  string(SHA256 _argn_hash "${ARGN}")
-  string(MAKE_C_IDENTIFIER "${arg_TARGET_NAME}" _tn)
-  if ("${_argn_hash}" STREQUAL "${_CREATE_VINFO_SOURCE_TEMPLATE_LASTHASH_${_tn}}")
-    return()
-  endif()
-
   # --- parse arguments
 
   set(_singleargs
+    TARGET_NAME
     TEMPLATE_FILEPATH       # absolute path to generated header file
     LANGUAGE                # "C" or "CXX"
     PROJECT_NAME            # self-explanatory
@@ -529,7 +517,14 @@ function(__create_vinfo_source_template)
     NAMESPACE_SCOPE_RESOLVE # self-explanatory (only used in C++)
     GIT_WORK_TREE           # if-defined, insert git related variables
   )
-  cmake_parse_arguments(arg "" "${_singleargs}" "" ${arg_UNPARSED_ARGUMENTS})
+  cmake_parse_arguments(PARSE_ARGV 0 arg "" "${_singleargs}" "")
+
+  # if the given arguments haven't changed since the last call, do nothing
+  string(SHA256 _argn_hash "${ARGN}")
+  string(MAKE_C_IDENTIFIER "${arg_TARGET_NAME}" _tn)
+  if ("${_argn_hash}" STREQUAL "${_CREATE_VINFO_SOURCE_TEMPLATE_LASTHASH_${_tn}}")
+    return()
+  endif()
 
   # --- setup language-specific template features
 
