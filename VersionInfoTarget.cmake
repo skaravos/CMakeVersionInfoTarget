@@ -74,8 +74,10 @@ cmake_minimum_required(VERSION 3.10)
 
   GIT_WORK_TREE <git_work_tree> (optional)
     if provided, git commit information will be queried at build-time
-    from the given <git_work_tree>
+    from the provided <git_work_tree>.
     NOTE: this option requires cmake to be able to find_package(Git)
+    NOTE: if the git_work_tree is provided as a relative path it will be
+          considered relative to the \${CMAKE_CURRENT_SOURCE_DIR}
 
   PROJECT_NAME <name>  (optional; default=name of current project)
     if provided, the target will use the given name instead of the current
@@ -157,7 +159,9 @@ function(add_version_info_target)
   endforeach()
 
   if (arg_GIT_WORK_TREE)
-    if (NOT EXISTS "${arg_GIT_WORK_TREE}")
+    get_filename_component(_git_work_tree "${arg_GIT_WORK_TREE}" ABSOLUTE
+      BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+    if (NOT EXISTS "${_git_work_tree}")
       __invalid_argument("GIT_WORK_TREE" "provided directory does not exist [${arg_GIT_WORK_TREE}]")
     endif()
     find_package(Git REQUIRED QUIET)
@@ -166,13 +170,14 @@ function(add_version_info_target)
     endif()
     execute_process(
       COMMAND ${GIT_EXECUTABLE} rev-parse HEAD
-      WORKING_DIRECTORY ${arg_GIT_WORK_TREE}
+      WORKING_DIRECTORY ${_git_work_tree}
       RESULT_VARIABLE _git_result
       OUTPUT_QUIET
       ERROR_QUIET
     )
     if (NOT _git_result EQUAL 0)
-      message(FATAL_ERROR "Provided GIT_WORK_TREE is not a git repository")
+      __invalid_argument("GIT_WORK_TREE"
+        "provided directory is not a git repository [${_git_work_tree}]")
     endif()
   endif()
 
@@ -281,7 +286,7 @@ function(add_version_info_target)
     NAMESPACE_ACCESS_PREFIX ${_namespace_access_prefix}
     NAMESPACE_SCOPE_OPENING ${_namespace_scope_opening}
     NAMESPACE_SCOPE_CLOSING ${_namespace_scope_closing}
-    GIT_WORK_TREE           ${arg_GIT_WORK_TREE}
+    GIT_WORK_TREE           ${_git_work_tree}
   )
   __create_vinfo_source_template(
     TEMPLATE_FILEPATH       ${_vinfo_src_in}
@@ -297,7 +302,7 @@ function(add_version_info_target)
     NAMESPACE_SCOPE_OPENING ${_namespace_scope_opening}
     NAMESPACE_SCOPE_CLOSING ${_namespace_scope_closing}
     NAMESPACE_SCOPE_RESOLVE ${_namespace_scope_resolve}
-    GIT_WORK_TREE           ${arg_GIT_WORK_TREE}
+    GIT_WORK_TREE           ${_git_work_tree}
   )
 
   # we use file(APPEND ...) here to generate a temporary copies of the source
@@ -319,7 +324,7 @@ function(add_version_info_target)
       -D_VINFO_HDR=${_vinfo_hdr}
       -D_VINFO_SRC_IN=${_vinfo_src_in}
       -D_VINFO_SRC=${_vinfo_src}
-      -D_GIT_WORK_TREE=${arg_GIT_WORK_TREE}
+      -D_GIT_WORK_TREE=${_git_work_tree}
       -D_BUILD_TYPE=$<CONFIG>
       -P ${_vinfo_query_cmake}
     COMMENT
@@ -415,7 +420,7 @@ function(__create_vinfo_header_template)
 
   # --- setup git-specific template variables
 
-  if (arg_GIT_WORK_TREE)
+  if (_git_work_tree)
     if ("${arg_LANGUAGE}" STREQUAL "C")
       set(_git_var_uncommittedchanges
           "extern const int         ${_namespace_prefix}GitUncommittedChanges; // 0 - false, 1 - true")
