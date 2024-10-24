@@ -91,6 +91,20 @@ cmake_minimum_required(VERSION 3.10)
 #]=============================================================================]
 function(add_version_info_target)
 
+  # --- functions for err messages
+
+  function (__invalid_argument ARG_NAME)
+    message(FATAL_ERROR "invalid argument: ${ARG_NAME}\n" ${ARGN})
+  endfunction()
+
+  function (__unknown_argument ARG_NAME)
+    message(FATAL_ERROR "unknown argument: ${ARG_NAME}\n" ${ARGN})
+  endfunction()
+
+  function (__missing_argument ARG_NAME)
+    message(FATAL_ERROR "missing argument: ${ARG_NAME}\n" ${ARGN})
+  endfunction()
+
   # --- parse arguments
 
   set(_options)
@@ -107,38 +121,44 @@ function(add_version_info_target)
   message(STATUS "add_version_info_target('${arg_NAME}')")
 
   foreach(_arg IN LISTS arg_UNPARSED_ARGUMENTS)
-    message(WARNING "Unparsed argument: ${_arg}")
+    __unknown_argument("${_arg}")
   endforeach()
 
   # --- validate arguments
 
   if (NOT arg_NAME)
-    message(FATAL_ERROR "NAME parameter is required")
+    __missing_argument("NAME"
+      "a unique name is always required for the version info target")
+  endif()
+
+  if (NOT arg_PROJECT_VERSION AND ("${PROJECT_VERSION}" STREQUAL ""))
+    __missing_argument("PROJECT_VERSION"
+      "is required because cmake variable \${PROJECT_VERSION} is not set")
   endif()
 
   if (TARGET ${arg_NAME})
-    message(WARNING "A target with this NAME[${arg_NAME}] already exists")
+    __invalid_argument("NAME" "provided value refers to a target that already exists [${arg_NAME}]")
   endif()
 
   foreach(_ns ${arg_NAMESPACE})
     if(NOT _ns MATCHES "^[_a-zA-Z][_a-zA-Z0-9]*$")
-      message(FATAL_ERROR "Provided NAMESPACE [${_ns}] isn't valid in C/C++")
+      __invalid_argument("NAMESPACE" "provided value isn't valid in C/C++ [${_ns}]")
     endif()
   endforeach()
 
   foreach(_tgt ${arg_LINK_TO})
     if (NOT TARGET ${_tgt})
-      message(FATAL_ERROR "LINK_TO parameter invalid: [${_tgt}] isn't a target")
+      __invalid_argument("LINK_TO" "provided value isn't an existing cmake target [${_tgt}]")
     endif()
   endforeach()
 
   if (arg_GIT_WORK_TREE)
     if (NOT EXISTS "${arg_GIT_WORK_TREE}")
-      message(FATAL_ERROR "Provided GIT_WORK_TREE does not exist")
+      __invalid_argument("GIT_WORK_TREE" "provided directory does not exist [${arg_GIT_WORK_TREE}]")
     endif()
     find_package(Git REQUIRED QUIET)
     if (NOT GIT_EXECUTABLE)
-      message(FATAL_ERROR "Parameter GIT_WORK_TREE provided but Git not found")
+      __invalid_argument("GIT_WORK_TREE" "'git' executable could not be found")
     endif()
     execute_process(
       COMMAND ${GIT_EXECUTABLE} rev-parse HEAD
@@ -153,21 +173,21 @@ function(add_version_info_target)
   endif()
 
   if (arg_LANGUAGE AND (NOT "${arg_LANGUAGE}" MATCHES [[^(C|CXX|C\+\+)$]]))
-    message(FATAL_ERROR "Parameter LANGUAGE must be one of: C or CXX")
+    __invalid_argument("LANGUAGE" "must be one of: C or CXX")
   endif()
 
   # --- determine language to use
 
   if (${arg_LANGUAGE} STREQUAL "C")
     if (NOT CMAKE_C_COMPILER)
-      message(FATAL_ERROR "LANGUAGE C specified but no C compiler found")
+      __invalid_argument("LANGUAGE" "C specified but no C compiler found")
     endif()
     set(_language "C")
     set(_hdr_ext  "h")
     set(_src_ext  "c")
   else()
     if (NOT CMAKE_CXX_COMPILER)
-      message(FATAL_ERROR "LANGUAGE CXX specified but no CXX compiler found")
+      __invalid_argument("LANGUAGE" "CXX specified but no CXX compiler found")
     endif()
     set(_language "CXX")
     set(_hdr_ext  "hpp")
