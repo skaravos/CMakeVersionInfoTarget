@@ -9,7 +9,7 @@ project version information should be as accurate as possible.
 The following information is made available to any target linking to the target:
 
 - project name
-- project version (major, minor & patch)
+- project version (major, minor, patch, tweak & suffix)
 - compiler id (GNU, MSVC, Clang)
 - compiler version
 - platform architecture (x86, AMD64, ARM)
@@ -79,13 +79,13 @@ include(3rd/CMakeVersionInfoTarget/VersionInfoTarget.cmake)
 This will import a function `add_version_info_target` with the following call spec:
 
 ```cmake
-add_version_info_target(NAME <unique_target_name>
-    [LINK_TO targets...]
-    [NAMESPACE namespaces...]
-    [LANGUAGE language]
-    [GIT_WORK_TREE <git_work_tree>]
-    [PROJECT_NAME <name>]
-    [PROJECT_VERSION <version>]
+add_version_info_target(NAME unique_target_name
+  [LINK_TO <target>...]
+  [NAMESPACE <namespace>...]
+  [LANGUAGE <language>]
+  [GIT_WORK_TREE <git_work_tree>]
+  [PROJECT_NAME <name>]
+  [PROJECT_VERSION <version>]
 )
 ```
 
