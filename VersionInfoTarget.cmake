@@ -83,12 +83,25 @@ cmake_minimum_required(VERSION 3.10)
     if provided, the target will use the given name instead of the current
     project name.
 
-  PROJECT_VERSION <version>  (optional; default=version of current project)
-    if provided, the target will use the given version instead of the current
-    project version.
-    NOTE: must be provided in the form <major[.minor[.patch[[.-]tweak]]>
-    NOTE: the 'tweak' version can be separated using either a period or a hyphen
-          e.g. both 1.0.1.1 and 1.0.1-rev1 are valid versions
+  PROJECT_VERSION <version>
+    (optional; default=\${PROJECT_VERSION})
+    if provided, the given version string will be parsed into sub-components
+    and inserted into the generated library.
+    NOTE: the version string must match the form
+          major[.minor[.patch[.tweak]]][-suffix]
+    NOTE: leading zeroes in version components are preserved
+    NOTE: the major, minor, patch and tweak versions must be numeric, but the
+          optional suffix can contain any characters that aren't double-quotes,
+          backslashes, percent signs, or whitespace.
+          e.g. the following are all valid versions
+            - 1
+            - 1.2
+            - 1.2.3
+            - 1.2.3.4
+            - 1.2.3.4-rc1
+            - 1.2.3-alpha0
+            - 1.2-beta#1
+            - 1-derang3d_suff!x-with^-$pec;a|-c#@ra[ters
 
 #]=============================================================================]
 function(add_version_info_target)
@@ -219,20 +232,23 @@ function(add_version_info_target)
   # --- determine version to use
 
   if (arg_PROJECT_VERSION)
-    string(REGEX MATCH [[([0-9]+)(\.([0-9]+)(\.([0-9]+)([.-]([A-Za-z0-9]+))?)?)?]]
-           _matched "${arg_PROJECT_VERSION}")
-    set(_version       "${CMAKE_MATCH_0}")
-    set(_version_major "${CMAKE_MATCH_1}")
-    set(_version_minor "${CMAKE_MATCH_3}")
-    set(_version_patch "${CMAKE_MATCH_5}")
-    set(_version_tweak "${CMAKE_MATCH_7}")
+    set(_project_version ${arg_PROJECT_VERSION})
   else()
-    set(_version       ${PROJECT_VERSION})
-    set(_version_major ${PROJECT_VERSION_MAJOR})
-    set(_version_minor ${PROJECT_VERSION_MINOR})
-    set(_version_patch ${PROJECT_VERSION_PATCH})
-    set(_version_tweak ${PROJECT_VERSION_TWEAK})
+    set(_project_version ${PROJECT_VERSION})
   endif()
+
+  set(_suffix_ch_set "^\n\t \%\"\\") # <-- no whitespace, percent, double-quote, or backslash
+  if (NOT "${_project_version}" MATCHES
+          "^([0-9]+)(\\.([0-9]+)(\\.([0-9]+)(\\.([0-9]+))?)?)?(-([${_suffix_ch_set}]+))?$")
+    __invalid_argument("PROJECT_VERSION"
+      "version must be of the form: ^major[.minor[.patch[.tweak]]][-suffix]$")
+  endif()
+  set(_version        "${CMAKE_MATCH_0}")
+  set(_version_major  "${CMAKE_MATCH_1}")
+  set(_version_minor  "${CMAKE_MATCH_3}")
+  set(_version_patch  "${CMAKE_MATCH_5}")
+  set(_version_tweak  "${CMAKE_MATCH_7}")
+  set(_version_suffix "${CMAKE_MATCH_9}")
 
   # --- determine project name
 
@@ -298,6 +314,7 @@ function(add_version_info_target)
     PROJECT_VERSION_MINOR   ${_version_minor}
     PROJECT_VERSION_PATCH   ${_version_patch}
     PROJECT_VERSION_TWEAK   ${_version_tweak}
+    PROJECT_VERSION_SUFFIX  ${_version_suffix}
     NAMESPACE_ACCESS_PREFIX ${_namespace_access_prefix}
     NAMESPACE_SCOPE_OPENING ${_namespace_scope_opening}
     NAMESPACE_SCOPE_CLOSING ${_namespace_scope_closing}
@@ -449,6 +466,7 @@ extern const char* const ${_namespace_prefix}ProjectVersionMajor;
 extern const char* const ${_namespace_prefix}ProjectVersionMinor;
 extern const char* const ${_namespace_prefix}ProjectVersionPatch;
 extern const char* const ${_namespace_prefix}ProjectVersionTweak;
+extern const char* const ${_namespace_prefix}ProjectVersionSuffix;
 extern const char* const ${_namespace_prefix}CompilerId;
 extern const char* const ${_namespace_prefix}CompilerVersion;
 extern const char* const ${_namespace_prefix}Architecture; // x86  x64
@@ -496,6 +514,7 @@ function(__create_vinfo_source_template)
     PROJECT_VERSION_MINOR   # self-explanatory
     PROJECT_VERSION_PATCH   # self-explanatory
     PROJECT_VERSION_TWEAK   # self-explanatory
+    PROJECT_VERSION_SUFFIX  # self-explanatory
     NAMESPACE_ACCESS_PREFIX # self-explanatory (only used in C)
     NAMESPACE_SCOPE_OPENING # self-explanatory (only used in C++)
     NAMESPACE_SCOPE_CLOSING # self-explanatory (only used in C++)
@@ -555,16 +574,17 @@ function(__create_vinfo_source_template)
 #include \"${arg_TARGET_NAME}/VersionInfo.${_extension}\"
 
 ${_namespace_opening}
-const char* const ${_namespace_prefix}ProjectName         = \"${arg_PROJECT_NAME}\";
-const char* const ${_namespace_prefix}ProjectVersion      = \"${arg_PROJECT_VERSION}\";
-const char* const ${_namespace_prefix}ProjectVersionMajor = \"${arg_PROJECT_VERSION_MAJOR}\";
-const char* const ${_namespace_prefix}ProjectVersionMinor = \"${arg_PROJECT_VERSION_MINOR}\";
-const char* const ${_namespace_prefix}ProjectVersionPatch = \"${arg_PROJECT_VERSION_PATCH}\";
-const char* const ${_namespace_prefix}ProjectVersionTweak = \"${arg_PROJECT_VERSION_TWEAK}\";
-const char* const ${_namespace_prefix}CompilerId          = \"${_compiler_id}\";
-const char* const ${_namespace_prefix}CompilerVersion     = \"${_compiler_version}\";
-const char* const ${_namespace_prefix}Architecture        = \"${CMAKE_SYSTEM_PROCESSOR}\";
-const char* const ${_namespace_prefix}BuildType           = \"@_BUILD_TYPE@\";
+const char* const ${_namespace_prefix}ProjectName          = \"${arg_PROJECT_NAME}\";
+const char* const ${_namespace_prefix}ProjectVersion       = \"${arg_PROJECT_VERSION}\";
+const char* const ${_namespace_prefix}ProjectVersionMajor  = \"${arg_PROJECT_VERSION_MAJOR}\";
+const char* const ${_namespace_prefix}ProjectVersionMinor  = \"${arg_PROJECT_VERSION_MINOR}\";
+const char* const ${_namespace_prefix}ProjectVersionPatch  = \"${arg_PROJECT_VERSION_PATCH}\";
+const char* const ${_namespace_prefix}ProjectVersionTweak  = \"${arg_PROJECT_VERSION_TWEAK}\";
+const char* const ${_namespace_prefix}ProjectVersionSuffix = \"${arg_PROJECT_VERSION_SUFFIX}\";
+const char* const ${_namespace_prefix}CompilerId           = \"${_compiler_id}\";
+const char* const ${_namespace_prefix}CompilerVersion      = \"${_compiler_version}\";
+const char* const ${_namespace_prefix}Architecture         = \"${CMAKE_SYSTEM_PROCESSOR}\";
+const char* const ${_namespace_prefix}BuildType            = \"@_BUILD_TYPE@\";
 
 ${_git_var_uncommittedchanges}
 ${_git_var_gitcommithash}
@@ -591,6 +611,7 @@ const char* const ${_namespace_prefix}VersionSummaryDetailed =
 \"\\nProjectVersionMinor='${arg_PROJECT_VERSION_MINOR}'\"
 \"\\nProjectVersionPatch='${arg_PROJECT_VERSION_PATCH}'\"
 \"\\nProjectVersionTweak='${arg_PROJECT_VERSION_TWEAK}'\"
+\"\\nProjectVersionSuffix='${arg_PROJECT_VERSION_SUFFIX}'\"
 \"\\nCompilerId='${_compiler_id}'\"
 \"\\nCompilerVersion='${_compiler_version}'\"
 \"\\nArchitecture='${CMAKE_SYSTEM_PROCESSOR}'\"
