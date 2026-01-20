@@ -9,7 +9,7 @@ project version information should be as accurate as possible.
 The following information is made available to any target linking to the target:
 
 - project name
-- project version (major, minor, patch, tweak & suffix)
+- project version (major, minor, patch, tweak & label)
 - compiler id (GNU, MSVC, Clang)
 - compiler version
 - platform architecture (x86, AMD64, ARM)
