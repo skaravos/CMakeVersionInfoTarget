@@ -96,11 +96,13 @@ cmake_minimum_required(VERSION 3.10...4.2)
     if provided, the given version string will be parsed into sub-components
     and inserted into the generated library.
     NOTE: the version string must match the form
-          major[.minor[.patch[.tweak]]][-label]
+          major[.minor[.patch[.tweak]]][-label][+build]
     NOTE: leading zeroes in version components are preserved
     NOTE: the major, minor, patch and tweak versions must be numeric, but the
-          optional label can contain any characters that aren't double-quotes,
-          backslashes, percent signs, or whitespace.
+          optional label and build can contain any characters that aren't
+          double-quotes, backslashes, percent signs, plus signs, or whitespace.
+    NOTE: +build metadata follows the semver 2.0.0 spec and should be ignored
+          when determining version precedence
           e.g. the following are all valid versions
             - 1
             - 1.2
@@ -109,6 +111,8 @@ cmake_minimum_required(VERSION 3.10...4.2)
             - 1.2.3.4-rc1
             - 1.2.3-alpha0
             - 1.2-beta#1
+            - 1.2.3+build456
+            - 1.2.3-rc1+20250316.sha.abc123
             - 1-derang3d_suff!x-with^-$pec;a|-c#@ra[ters
 
 #]=============================================================================]
@@ -245,11 +249,20 @@ function(add_version_info_target)
     set(_project_version ${PROJECT_VERSION})
   endif()
 
+  # --- strip optional +build metadata (semver 2.0.0) before parsing version
+
+  set(_version_build "")
+  set(_build_ch_set "^\n\t \%\"\\\\+") # <-- no whitespace, percent, double-quote, backslash or plus
+  if ("${_project_version}" MATCHES "\\+([^${_build_ch_set}]+)$")
+    set(_version_build "${CMAKE_MATCH_1}")
+    string(REGEX REPLACE "\\+[${_build_ch_set}]+$" "" _project_version "${_project_version}")
+  endif()
+
   set(_label_ch_set "^\n\t \%\"\\") # <-- no whitespace, percent, double-quote, or backslash
   if (NOT "${_project_version}" MATCHES
           "^([0-9]+)(\\.([0-9]+)(\\.([0-9]+)(\\.([0-9]+))?)?)?(-([${_label_ch_set}]+))?$")
     __invalid_argument("PROJECT_VERSION"
-      "version must be of the form: ^major[.minor[.patch[.tweak]]][-label]$")
+      "version must be of the form: ^major[.minor[.patch[.tweak]]][-label][+build]$")
   endif()
   set(_version       "${CMAKE_MATCH_0}")
   set(_version_major "${CMAKE_MATCH_1}")
@@ -257,6 +270,12 @@ function(add_version_info_target)
   set(_version_patch "${CMAKE_MATCH_5}")
   set(_version_tweak "${CMAKE_MATCH_7}")
   set(_version_label "${CMAKE_MATCH_9}")
+
+  # --- reconstruct the full version string including +build if present
+
+  if (_version_build)
+    set(_version "${_version}+${_version_build}")
+  endif()
 
   # --- determine project name
 
@@ -323,6 +342,7 @@ function(add_version_info_target)
     PROJECT_VERSION_PATCH   "${_version_patch}"
     PROJECT_VERSION_TWEAK   "${_version_tweak}"
     PROJECT_VERSION_LABEL   "${_version_label}"
+    PROJECT_VERSION_BUILD   "${_version_build}"
     NAMESPACE_ACCESS_PREFIX "${_namespace_access_prefix}"
     NAMESPACE_SCOPE_OPENING "${_namespace_scope_opening}"
     NAMESPACE_SCOPE_CLOSING "${_namespace_scope_closing}"
@@ -472,6 +492,7 @@ extern const char* const ${_namespace_prefix}ProjectVersionMinor;
 extern const char* const ${_namespace_prefix}ProjectVersionPatch;
 extern const char* const ${_namespace_prefix}ProjectVersionTweak;
 extern const char* const ${_namespace_prefix}ProjectVersionLabel;
+extern const char* const ${_namespace_prefix}ProjectVersionBuild;
 extern const char* const ${_namespace_prefix}CompilerId;
 extern const char* const ${_namespace_prefix}CompilerVersion;
 extern const char* const ${_namespace_prefix}Architecture; // x86  x64
@@ -511,6 +532,7 @@ function(__create_vinfo_source_template)
     PROJECT_VERSION_PATCH   # self-explanatory
     PROJECT_VERSION_TWEAK   # self-explanatory
     PROJECT_VERSION_LABEL   # self-explanatory
+    PROJECT_VERSION_BUILD   # self-explanatory (semver 2.0.0 build metadata)
     NAMESPACE_ACCESS_PREFIX # self-explanatory (only used in C)
     NAMESPACE_SCOPE_OPENING # self-explanatory (only used in C++)
     NAMESPACE_SCOPE_CLOSING # self-explanatory (only used in C++)
@@ -584,6 +606,7 @@ const char* const ${_namespace_prefix}ProjectVersionMinor = \"${arg_PROJECT_VERS
 const char* const ${_namespace_prefix}ProjectVersionPatch = \"${arg_PROJECT_VERSION_PATCH}\";
 const char* const ${_namespace_prefix}ProjectVersionTweak = \"${arg_PROJECT_VERSION_TWEAK}\";
 const char* const ${_namespace_prefix}ProjectVersionLabel = \"${arg_PROJECT_VERSION_LABEL}\";
+const char* const ${_namespace_prefix}ProjectVersionBuild = \"${arg_PROJECT_VERSION_BUILD}\";
 const char* const ${_namespace_prefix}CompilerId          = \"${_compiler_id}\";
 const char* const ${_namespace_prefix}CompilerVersion     = \"${_compiler_version}\";
 const char* const ${_namespace_prefix}Architecture        = \"${CMAKE_SYSTEM_PROCESSOR}\";
@@ -615,6 +638,7 @@ const char* const ${_namespace_prefix}VersionSummaryDetailed =
 \"\\nProjectVersionPatch='${arg_PROJECT_VERSION_PATCH}'\"
 \"\\nProjectVersionTweak='${arg_PROJECT_VERSION_TWEAK}'\"
 \"\\nProjectVersionLabel='${arg_PROJECT_VERSION_LABEL}'\"
+\"\\nProjectVersionBuild='${arg_PROJECT_VERSION_BUILD}'\"
 \"\\nCompilerId='${_compiler_id}'\"
 \"\\nCompilerVersion='${_compiler_version}'\"
 \"\\nArchitecture='${CMAKE_SYSTEM_PROCESSOR}'\"
